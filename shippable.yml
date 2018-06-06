@@ -56,7 +56,7 @@ jobs:
       - OUT: gcp_gce_tf_state
     on_success:
       script:
-        - shipctl put_resource_state_multi gcp_gce_tf_info "versionName=$(terraform output ec2_ins_0_ip)" "ec2_ins_0_ip=$(terraform output ec2_ins_0_ip)"
+        - shipctl put_resource_state_multi gcp_gce_tf_info "versionName=$(terraform output gce_ins_0_ip)" "gce_ins_0_ip=$(terraform output gce_ins_0_ip)"
     always:
       script:
         - shipctl copy_file_to_resource_state terraform.tfstate gcp_gce_tf_state
