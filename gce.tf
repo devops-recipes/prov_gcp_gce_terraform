@@ -1,6 +1,6 @@
 # Setup our aws provider
 provider "google" {
-  credentials = "${file("${var.account_file}")}"
+  credentials = "${var.json_key}"
   project = "${var.google_project_id}"
   region = "${var.region}"
 }
