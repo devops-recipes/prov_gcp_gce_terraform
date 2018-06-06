@@ -1,0 +1,107 @@
+resources:
+# Automation scripts repo
+  - name: gcp_gce_tf_repo
+    type: gitRepo
+    integration: "drship_github"
+    versionTemplate:
+      sourceName: "devops-recipes/prov_gcp_gce_terraform"
+      branch: master
+
+# gcp credentials
+  - name: gcp_gce_tf_creds
+    type: integration
+    integration: "drship_gcp"
+
+# Terraform State
+  - name: gcp_gce_tf_state
+    type: state
+
+# Output of ec2 provisioning
+  - name: gcp_gce_tf_info
+    type: params
+    versionTemplate:
+      params:
+        SEED: "initial_version"
+
+jobs:
+# Provision gcp ec2 with Terraform
+  - name: prov_gcp_gce_tf
+    type: runSh
+    steps:
+      - IN: gcp_gce_tf_repo
+      - IN: gcp_gce_tf_state
+        switch: off
+      - IN: gcp_gce_tf_creds
+        switch: off
+      - TASK:
+          name: prov_ec2
+          runtime:
+            options:
+              env:
+                - machine_type: "n1-standard-1"
+                - zone: "us-east1-b"
+                - region: "us-east1"
+                - google_project_id: "devops-recipes"
+                - machine_count: 1
+                - json_key: "gcp_key.json"
+          script:
+            - pushd $(shipctl get_resource_state "gcp_gce_tf_repo")
+            - echo $(shipctl get_integration_resource_field gcp_gce_tf_creds JSON_key) > $json_key
+            - shipctl copy_file_from_resource_state gcp_gce_tf_state terraform.tfstate .
+            - shipctl replace terraform.tfvars
+            - terraform init
+            - terraform apply -auto-approve -var-file=terraform.tfvars
+      - OUT: gcp_gce_tf_info
+        overwrite: true
+      - OUT: gcp_gce_tf_state
+    on_success:
+      script:
+        - shipctl put_resource_state_multi gcp_gce_tf_info "versionName=$(terraform output ec2_ins_0_ip)" "ec2_ins_0_ip=$(terraform output ec2_ins_0_ip)"
+    always:
+      script:
+        - shipctl copy_file_to_resource_state terraform.tfstate gcp_gce_tf_state
+        - popd
+    flags:
+      - gcp_gce
+      - gcp
+      - terraform
+
+# De-provision gcp ec2 with Terraform
+  - name: deprov_gcp_gce_tf
+    type: runSh
+    steps:
+      - IN: gcp_gce_tf_info
+        switch: off
+      - IN: gcp_gce_tf_repo
+        switch: off
+      - IN: gcp_gce_tf_state
+        switch: off
+      - IN: gcp_gce_tf_creds
+        switch: off
+      - TASK:
+          name: deprov_inst
+          runtime:
+            options:
+              env:
+                - machine_type: "n1-standard-1"
+                - zone: "us-east1-b"
+                - region: "us-east1"
+                - google_project_id: "devops-recipes"
+                - machine_count: 1
+                - json_key: "gcp_key.json"
+          script:
+            - pushd $(shipctl get_resource_state "gcp_gce_tf_repo")
+            - echo $(shipctl get_integration_resource_field gcp_gce_tf_creds JSON_key) > $json_key
+            - shipctl copy_file_from_resource_state gcp_gce_tf_state terraform.tfstate .
+            - shipctl replace terraform.tfvars
+            - terraform init
+            - terraform destroy -force -auto-approve -var-file=terraform.tfvars
+      - OUT: gcp_gce_tf_state
+    always:
+      script:
+        - shipctl copy_file_to_resource_state terraform.tfstate gcp_gce_tf_state
+        - popd
+    flags:
+      - gcp_gce
+      - gcp
+      - terraform
