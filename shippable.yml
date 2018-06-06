@@ -62,8 +62,8 @@ jobs:
         - shipctl copy_file_to_resource_state terraform.tfstate gcp_gce_tf_state
         - popd
     flags:
-      - gcp_gce
       - gcp
+      - gce
       - terraform
 
 # De-provision gcp ec2 with Terraform
@@ -102,6 +102,6 @@ jobs:
         - shipctl copy_file_to_resource_state terraform.tfstate gcp_gce_tf_state
         - popd
     flags:
-      - gcp_gce
       - gcp
+      - gce
       - terraform
